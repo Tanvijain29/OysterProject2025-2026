@@ -1,1 +1,18 @@
-Add .gitignore for R project
+# ---- R / RStudio ----
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# ---- Temporary files ----
+*.tmp
+*.log
+*.bak
+*~
+
+# ---- Plots and reports (generated) ----
+*.png
+*.pdf
+*.html
+
+
