@@ -1,52 +1,25 @@
 options("install.lock"=FALSE)
 
-
-hist(Oyster_Predation_Data$No.ofSpats)#not normal
-
-boxplot(Oyster_Predation_Data$No.ofSpats~Oyster_Predation_Data$BagID)
-##bunch of outliers
-boxplot(Oyster_Predation_Data$No.ofSpats~Oyster_Predation_Data$Site)
-##bunch of outliers
-boxplot(Oyster_Predation_Data$No.ofSpats~Oyster_Predation_Data$Iteration)
-
-##How long were the predation spat bags in the water for both iterations??
-  
-
-pred<- lm(Oyster_Predation_Data$No.ofSpats ~ Oyster_Predation_Data$Iteration + Oyster_Predation_Data$Site + Oyster_Predation_Data$BagID)
-summary(pred)  
- 
-TukeyHSD(aov(Oyster_Predation_Data$No.ofSpats ~ Oyster_Predation_Data$Site))
-##next step how to get one rate for spat mortality?
-
-summary(aov(Oyster_Predation_Data$No.ofSpats~ as.character(Oyster_Predation_Data$Iteration)))
-
-
 #OBCTotalarea = 40,468.6 m²/10 acres, OBC subpplot = 0.5 acre/ 2023.43m²
 #LHTotalArea = 80,792.689 m²/20acres, LH subplot = 0.5 acre/ 2023.43m²
 #quadrat area is 0.5m²
 #OBC area sampled = 19 * 0.5 = 9.5m²
 #LH area sampled = 17 * 0.5= 8.5m²
 
-
 # Multi-year projection code 
-# Set key parameters 
 
-nYears <- 20 # set the number of years to project
+nYears <- 20# set the number of years to project
 Transition <- matrix(  
   c(
-    0.7,  0 ,  0 ,  0, 0 , 0,
+    0.007,  0 ,  0 ,  0, 0 , 0,
     .27, .49,  0 ,  0, 0 , 0,
     0  , .11, .22,  0, 0 , 0,
-    0  , 0  , 0  ,0.7, 0 , 0,
+    0  , 0  , 0  ,0.007, 0 , 0,
     0  , 0  , 0  ,.27,.49, 0,
     0  , 0  , 0  , 0 ,.11, .22
   )
   ,nrow=6, ncol=6, byrow=T
 )
-
-InitAbund <- c(238, 3333,	22377, 4047, 21299, 60064 ) # initial abundance vector
-AgeStructured <- FALSE # set to TRUE for Leslie matrix and FALSE for Lefkovitch 
-
 
 Fecundity <- matrix(     
   c(
@@ -61,16 +34,31 @@ Fecundity <- matrix(
   ,nrow=6, ncol=6,byrow=T
 )
 
-Fecundity_larval_mort<- Fecundity *0.22 #assuming a 22% larval survival over 2 weeks; calculated later in the script
+
+#estimating pre-settlement larval mortality
+daily_larval_mort<- 0.20
+starting_larva<- 40000
+time_until_Settle<- 14
+
+existing_larva<- starting_larva
+for(day in 1:time_until_Settle){
+  existing_larva<- existing_larva*(1-daily_larval_mort)
+}
+print(existing_larva)
+survival_larva<- existing_larva/starting_larva
+print(survival_larva)
+
+Fecundity_larval_mort<- Fecundity*survival_larva #assuming a 4% larval survival (20% daily mortality in 14 days) over 2 weeks
+
 
 connectivitymat <- t(matrix(     
   c(
-    0.096, 0 , 0, 0.008, 0, 0, 
+    0.008, 0 , 0, 0.008, 0, 0, 
     0, 0,  0,  0, 0, 0,
     0, 0,  0,  0, 0, 0,
     0.006, 0,  0, 0.008, 0, 0,
-    0,0,0,0,0,0,
-    0, 0,0,0,0,0
+    0,   0,0,  0, 0,0,
+    0,   0,0,  0, 0,0
   )
   ,nrow=6,ncol=6,byrow=T
 ))
@@ -79,32 +67,42 @@ connectivitymat <- t(matrix(
 ##NOTE: theuerkauf model: {TransitionMatrix + [(P of remaining in the same size class(connectivitymatrix * fecunditymatrix)]} * initial abundance
 ##NOTE: for fecundity, use both range estimates, i. e., from Mann et al 2014 and Mroch 2012
  
-fc<- Fecundity*connectivitymat
-fct<- fc + Transition
-fct
 
-#adjusting for larval mortality
+#adjusting for pre-settlement larval mortality
 fc2<- Fecundity_larval_mort*connectivitymat
+fc2
 fc2t<- fc2 + Transition
 fc2t
   
-dumping_matrix<- matrix(0, nrow=nrow(fct), ncol = nYears+1)
-dumping_matrix[,1] <- c(10000,1000,1000,1000,1000,1000) #random numbers for three sites for year 2023
-dumping_matrix[,2] <- c(10000,1000,1000,1000,1000,1000)# random numbers for year 2204
+InitAbund <- c(238, 3333,	22377, 4047, 21299, 60064 ) # initial empirical abundance from 2025 LH and then OBC
+InitAbund2 <- c(0, 0, 0, 0, 0, 0) #supposing 0 oysters in 2022
+
+#LH_23_spat<- 5775000
+#OB_23_spat<- 2000000
+#LH_24_spat<- 6679195
+#LH_24_Adult<- 329707
+#OB_24_spat<- 218320
+
+dumping_matrix<- matrix(0, nrow = nrow(fc2t),ncol=nYears+1 )
+dumping_matrix[,1]<- c(5775000, 0, 0, 2000000, 0, 0)#2023
+dumping_matrix[,2]<- c(6679195, 0, 329707, 218320, 0, 0)#OBC 2024
+ 
+
+AgeStructured <- FALSE # set to TRUE for Leslie matrix and FALSE for Lefkovitch 
 
 
 #FOR loop for multi-year projection  
-allYears <- matrix(0,nrow=nrow(fct),ncol=nYears+1)     # build a storage array for all stages and all years
+allYears <- matrix(0, nrow=nrow(fc2t), ncol=nYears+1)# build a storage array for all stages and all years
 allYears[,1] <- InitAbund  # set the year 0 abundance                                    
 for(t in 2:(nYears+1)){   # loop through all years
-  allYears[,t] <-  fc2t %*% allYears[,t-1]# allYears[,t] <-  fct %*% allYears[,t-1] +dumping_matrix[,t-1]
+  allYears[,t] <-  fc2t %*% allYears[,t-1] # +dumping_matrix[,t-1]
 }
 
-allYearslog<- log10(allYears)
-plot(1,1,pch="",ylim=c(0,max(allYearslog)),xlim=c(0,nYears+1),xlab="Years",ylab="Log Abundance",xaxt="n")  # set up blank plot
-cols <- rainbow(ncol(fct))    # set up colors to use
+allYearslog<- log10(allYears +0.1)
+plot(1,1,pch="",ylim=c(0,max(allYearslog)),xlim=c(0,nYears+1),xlab="Years",ylab="Log Abundance",xaxt="n", main = "No dumping")  # set up blank plot
+cols <- rainbow(ncol(fc2t))    # set up colors to use
 for(s in 1:ncol(fc2t)){
-  points(allYearslog[s,],col=cols[s],type="l",lwd=2)     # plot out each life stage abundance, one at a time
+  points(allYearslog[s,],col=cols[s],type="l",lwd=2)    # plot out each life stage abundance, one at a time
 }
 axis(1,at=seq(1,nYears+1),labels = seq(0,nYears))   # label the axis
 if(AgeStructured){
@@ -115,43 +113,52 @@ if(AgeStructured){
 legend("topleft",col=cols,lwd=rep(2,ncol(fc2t)),legend= c("Juvenile LH", "Subadult LH", "Adult LH", "Juvenile OBC", "Subadult OBC", "Adult OBC"),bty="n
        ")  # put a legend on the plot
 
+
+#Loop that includes dumping data
+allYearsdump <- matrix(0, nrow=nrow(fc2t), ncol=nYears+1)# build a storage array for all stages and all years
+allYearsdump[,1] <- InitAbund2  # set the year 0 abundance                                    
+for(t in 2:(nYears+1)){   # loop through all years
+  allYearsdump[,t] <-  fc2t %*% allYearsdump[,t-1] + dumping_matrix[,t-1]
+}
+allYearsdumplog<- log10(allYearsdump + 0.1)
+plot(1, 1 , pch="" , ylim=c(0, max(allYearsdumplog)), xlim=c(0,nYears+1),xlab="Years",ylab="Log Abundance",xaxt="n", main = "With Dumping")  # set up blank plot
+cols <- rainbow(ncol(fc2t))    # set up colors to use
+for(s in 1:ncol(fc2t)){
+  points(allYearsdumplog[s,],col=cols[s],type="l",lwd=2)    # plot out each life stage abundance, one at a time
+}
+axis(1,at=seq(1,nYears+1),labels = seq(0,nYears))   # label the axis
+if(AgeStructured){
+  leg <-  paste("Age",seq(1,(ncol(fc2t))))
+}else{
+  leg <- paste("Stage",seq(1,ncol(fc2t))) 
+}
+legend("topright",col=cols,lwd=rep(2,ncol(fc2t)),legend= c("Juvenile LH", "Subadult LH", "Adult LH", "Juvenile OBC", "Subadult OBC", "Adult OBC"),bty="n
+       ")  # put a legend on the plot
+
+
+
 library(popbio)
 lambda(fc2t) 
 
 
 
 #notes from the defense:
-#incorporate additional habitats in the model. 
-#take into account dumping data 
-#improve connectivity matrix using MIKE  
+#^incorporate additional habitats in the model. 
+#^take into account dumping data 
+#^improve connectivity matrix using MIKE  
 #better fecundity estimates from lit or local hatcheries
 #use substrate data to estimate the probability of larval survival in a particular reef
 
 
-#last meeting 12/3
-daily_larval_mort<- 0.10
-starting_larva<- 40000
-time_until_Settle<- 14
+
+#2/3/2026 Meeting with Dr. Freeman
+#Need better connectivity numbers through MIKE model.
+#Use multiple estimates for connectivity. I already have low estimates. 
+
+##FOR NEXT WEEK
+#include a 3rd site within the bay that is also contributing to the larval pool; the general 'habitat' as opposed to the 'outside'
 
 
-existing_larva<- starting_larva
-for(day in 1:time_until_Settle){
-  existing_larva<- existing_larva* (1-daily_larval_mort)
-}
-print(existing_larva)
-
-survival_larva<- existing_larvae/starting_larvae
-print(survival_larva)
-
-
-##calculate K to limit growth
-#i can't figure out how to calculate K without the maximum density. I only have area and observed densities, which I don't think are close to the maximum. 
-
-
-
-
-
-
-
-
-
+#2/9/2025-pre-meeting notes
+#what should the initial estimates be for the 3rd site, assuming i keep the same transition, fecundity, and conncectivity(for now) rates.
+#really need 2025 dumping data
