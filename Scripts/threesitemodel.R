@@ -126,7 +126,7 @@ for(t in 2:(nYears+1)){   # loop through all years
   # D. SURVIVAL: Modify the Transition Matrix for this year
   # We create a temporary matrix 'Yearly_Transition'
   Yearly_Transition <- (Transition * 0.25)
-  Yearly_Transition[1:3, 1:3] <- Yearly_Transition[1:3, 1:3] * Density_Scalar[1]wh
+  Yearly_Transition[1:3, 1:3] <- Yearly_Transition[1:3, 1:3] * Density_Scalar[1]
   Yearly_Transition[4:6, 4:6] <- Yearly_Transition[4:6, 4:6] * Density_Scalar[2]
   Yearly_Transition[7:9, 7:9] <- Yearly_Transition[7:9, 7:9] * Density_Scalar[3]
   
@@ -149,6 +149,8 @@ if(AgeStructured){
   leg <- paste("Stage",seq(1,ncol(fc2t)))   }
 points(x = rep(4, length(InitAbund)), y=log10(InitAbund + 0.1), col = cols , pch = 15)
 
+library(popbio)
+lambda(fc2t)
 #legend("topleft",col=cols,lwd=rep(2,ncol(fc2t)),legend= c("Juvenile LH", "Subadult LH", "Adult LH", "Juvenile OBC", "Subadult OBC", "Adult OBC", "Juvenile W", "Subadult W", "Adult W"),bty="n")# put a legend on the plot
 
 #----------------------------------------------------------------------------------------------
