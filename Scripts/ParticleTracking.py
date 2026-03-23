@@ -9,9 +9,9 @@ reefs['Reefs'] = reefs['Reefs'].replace(site_mapping)
 all_reefs = ['LH', 'OBC', 'WSR', 'CovePoint', 'CSH']
 
 release_files = {
-    'LH': "C:/Users/tanvi/OneDrive/Documents/GitHub/OysterProject/Data/ParticletrackLH.xml",
-    'OBC': "C:/Users/tanvi/OneDrive/Documents/GitHub/OysterProject/Data/ParticletrackOBC.xml",
-    'WSR': "C:/Users/tanvi/OneDrive/Documents/GitHub/OysterProject/Data/ParticletrackWSR.xml"
+    'LH': "C:/Users/tanvi/OysterbayHDmodel/MESH_Tanvi/Mesh Generator/MODEL RUN/ParticleTrackLH.xml",
+    'OBC': "C:/Users/tanvi/OysterbayHDmodel/MESH_Tanvi/Mesh Generator/MODEL RUN/ParticleTrackOBC.xml",
+    'WSR': "C:/Users/tanvi/OysterbayHDmodel/MESH_Tanvi/Mesh Generator/MODEL RUN/ParticletrackWSR.xml"
 }
 
 connectivity_matrix = pd.DataFrame(index=all_reefs, columns=all_reefs)
@@ -49,3 +49,34 @@ for source_site, file_path in release_files.items():
 # --- 4. DISPLAY THE FINAL MATRIX ---
 print("\n--- FINAL CONNECTIVITY MATRIX (RAW COUNTS) ---")
 print(connectivity_matrix)
+
+import geopandas as gpd
+
+# --- 1. LOAD THE SHAPEFILE ---
+shapefile_path = "C:/Users/tanvi/OneDrive/Documents/GitHub/OysterProject/Data/reefs.shp"
+reefs = gpd.read_file(shapefile_path)
+
+# --- 2. PREPARE THE DATA ---
+# Reproject to UTM Zone 18N (EPSG:32618) to ensure area is calculated in meters
+reefs = reefs.to_crs(epsg=32618)
+
+# Group the WSR sub-sites into a single category
+site_mapping = {'WSR1': 'WSR', 'WSR2': 'WSR', 'WSR3': 'WSR'}
+reefs['Reefs'] = reefs['Reefs'].replace(site_mapping)
+
+# --- 3. CALCULATE CARRYING CAPACITY ---
+# Calculate the area in square meters for every polygon
+reefs['Area_sqm'] = reefs.geometry.area
+
+# Sum the areas by the specific Reef name
+total_areas = reefs.groupby('Reefs')['Area_sqm'].sum()
+
+# Multiply by your carrying capacity density (50 oysters per square meter)
+k_values_50 = total_areas * 50
+
+# --- 4. DISPLAY THE RESULTS ---
+print("Total Area (Square Meters):")
+print(total_areas.round(2))
+
+print("\nK_sites_50 Values (Area * 50):")
+print(k_values_50.round(0).astype(int))

@@ -1,0 +1,221 @@
+options("install.lock"=FALSE)
+
+
+T_block <- matrix(c(
+    0.007, 0,    0,
+    0.27,  0.49, 0,
+    0,     0.11, 0.22
+), nrow=3, byrow=TRUE)
+
+F_block <- matrix(c(
+    398, 7639, 39071,
+    0,   0,    0,
+    0,   0,    0
+), nrow=3, byrow=TRUE)
+
+# Automatically generate the 15x15 matrices for all 5 sites
+Transition <- matrix(0, nrow=15, ncol=15)
+Fecundity <- matrix(0, nrow=15, ncol=15)
+
+for(i in 1:5) {
+    Transition[(3*i-2):(3*i), (3*i-2):(3*i)] <- T_block
+    Fecundity[(3*i-2):(3*i), (3*i-2):(3*i)] <- F_block
+}
+
+
+conn_probs <- matrix(c(
+    0.622, 0.0,   0.0,   0.002, 0.032, # From LH
+    0.006, 0.226, 0.098, 0.024, 0.008, # From OBC
+    0.002, 0.0,   0.220, 0.030, 0.004, # From WSR
+    0.0,   0.0,   0.0,   0.0,   0.0,   # From CovePoint
+    0.0,   0.0,   0.0,   0.0,   0.0    # From CSH
+), nrow=5, byrow=TRUE)
+
+connectivitymat <- matrix(0, nrow=15, ncol=15)
+
+# Map the 5x5 probabilities to the juvenile stages in the 15x15 matrix
+for(source in 1:5) {
+    for(dest in 1:5) {
+        source_idx <- 3 * source - 2
+        dest_idx <- 3 * dest - 2
+        connectivitymat[dest_idx, source_idx] <- conn_probs[source, dest]
+    }
+}
+
+# --- 3. INITIALIZE PARAMETERS ---
+nYears <- 20
+daily_larval_mort <- 0.20
+starting_larva <- 40000
+time_until_Settle <- 14
+
+existing_larva <- starting_larva
+for(day in 1:time_until_Settle){
+    existing_larva <- existing_larva*(1-daily_larval_mort)
+}
+survival_larva <- existing_larva/starting_larva
+
+Fecundity_larval_mort <- Fecundity * survival_larva 
+fc2 <- Fecundity_larval_mort %*% t(connectivitymat) # Note: Transposed connectivity applied here
+fc2t <- fc2 + Transition
+
+# Expand initial abundance vectors to 15 slots
+InitAbund <- c(238, 3333, 22377, 4047, 21299, 60064, 0, 0, 0, 0, 0, 0, 0, 0, 0) 
+InitAbund2 <- rep(1, 15)
+
+# Expand dumping matrix to 15 rows
+dumping_matrix <- matrix(0, nrow = nrow(fc2t), ncol=nYears+1 )
+dumping_matrix[1:9, 1] <- c(2035000, 0, 0, 5810000, 0, 0, 0, 0, 0)
+dumping_matrix[1:9, 2] <- c(247198,  0, 0, 6714155, 0, 329707, 0, 0, 0)
+dumping_matrix[1:9, 3] <- c(22500,   0, 0, 5881028, 0, 129533, 0, 0, 0)
+dumping_matrix[1:9, 4] <- c(3000000, 0, 0, 3000000, 0, 75000, 0, 0, 0)
+dumping_matrix[1:9, 5] <- c(3000000, 0, 0, 3000000, 0, 75000, 0, 0, 0)
+dumping_matrix[1:9, 6] <- c(3000000, 0, 0, 3000000, 0, 75000, 0, 0, 0)
+dumping_matrix[1:9, 7] <- c(3000000, 0, 0, 3000000, 0, 75000, 0, 0, 0)
+dumping_matrix[1:9, 8] <- c(3000000, 0, 0, 3000000, 0, 75000, 0, 0, 0)
+dumping_matrix[1:9, 9] <- c(3000000, 0, 0, 3000000, 0, 75000, 0, 0, 0)
+dumping_matrix[1:9, 10]<- c(3000000, 0, 0, 3000000, 0, 75000, 0, 0, 0)
+
+AgeStructured <- FALSE 
+
+# *** UPDATE THE LAST TWO VALUES FOR COVEPOINT AND CSH ***
+K_sites_50 <- c(4046860, 2023430, 42739220, 10837171, 65402346) 
+
+# --- 4. RUN PROJECTIONS (NO DUMPING SCENARIO) ---
+allYears <- matrix(0, nrow=nrow(fc2t), ncol=nYears+1)
+allYears[,1] <- InitAbund2                                       
+for(t in 2:(nYears+1)){ 
+    temp1 <- allYears[,t-1]
+    
+    Current_N <- c(
+        sum(temp1[1:3]),   # LH
+        sum(temp1[4:6]),   # OBC
+        sum(temp1[7:9]),   # WSR
+        sum(temp1[10:12]), # CovePoint
+        sum(temp1[13:15])  # CSH
+    )
+
+    Density_Scalar <- pmax(0.1, (K_sites_50 - Current_N) / K_sites_50)
+
+    temp2 <- Fecundity_larval_mort %*% temp1 
+    temp3 <- t(connectivitymat) %*% temp2       
+    
+    # Apply scalars to juveniles
+    for(i in 1:5) {
+        idx <- 3 * i - 2
+        temp3[idx] <- temp3[idx] * Density_Scalar[i] 
+    }
+    
+    Yearly_Transition <- Transition * 0.25
+    for(i in 1:5) {
+        idx_start <- 3 * i - 2
+        idx_end <- 3 * i
+        Yearly_Transition[idx_start:idx_end, idx_start:idx_end] <- 
+            Yearly_Transition[idx_start:idx_end, idx_start:idx_end] * Density_Scalar[i]
+    }
+    
+    temp4 <- temp1 + as.vector(temp3)
+    allYears[,t] <- Yearly_Transition %*% temp4 
+}
+
+# --- 5. RUN PROJECTIONS (DUMPING SCENARIO) ---
+allYearsdump <- matrix(0, nrow=nrow(fc2t), ncol=nYears+1)
+allYearsdump[,1] <- InitAbund2     
+
+for(t in 2:(nYears+1)){   
+    temp1 <- allYearsdump[,t-1] + dumping_matrix[,t-1]
+
+    Current_N <- c(
+        sum(temp1[1:3]), 
+        sum(temp1[4:6]), 
+        sum(temp1[7:9]), 
+        sum(temp1[10:12]), 
+        sum(temp1[13:15])
+    )
+    
+    Density_Scalar <- pmax(0.1, (K_sites_50 - Current_N) / K_sites_50) 
+    
+    temp2 <- Fecundity_larval_mort %*% temp1 
+    temp3 <- t(connectivitymat) %*% temp2       
+    
+    for(i in 1:5) {
+        idx <- 3 * i - 2
+        temp3[idx] <- temp3[idx] * Density_Scalar[i] 
+    }
+    
+    Yearly_Transition <- (Transition * 0.25)
+    for(i in 1:5) {
+        idx_start <- 3 * i - 2
+        idx_end <- 3 * i
+        Yearly_Transition[idx_start:idx_end, idx_start:idx_end] <- 
+            Yearly_Transition[idx_start:idx_end, idx_start:idx_end] * Density_Scalar[i]
+    }
+    
+    temp4 <- temp1 + as.vector(temp3)
+    allYearsdump[,t] <- Yearly_Transition %*% temp4 
+}
+
+# --- 6. SUM TOTALS AND PLOT ---
+# Pool stages for all 5 sites
+site_totals_matrix1 <- rbind(
+    colSums(allYears[1:3, ]),
+    colSums(allYears[4:6, ]),
+    colSums(allYears[7:9, ]),
+    colSums(allYears[10:12, ]),
+    colSums(allYears[13:15, ])
+)
+log_site_totals1 <- log(site_totals_matrix1 + 0.1)
+
+site_totals_matrixd <- rbind(
+    colSums(allYearsdump[1:3, ]),
+    colSums(allYearsdump[4:6, ]),
+    colSums(allYearsdump[7:9, ]),
+    colSums(allYearsdump[10:12, ]),
+    colSums(allYearsdump[13:15, ])
+)
+log_site_totald <- log(site_totals_matrixd + 0.1)
+
+initabundpooled <- c(25948, 85410, 0, 0, 0)
+
+plot(1,1,pch="",ylim=c(0,max(log_site_totals1)),xlim=c(0,nYears+1),
+     xlab="Years", ylab="Log Abundance", xaxt="n", 
+     main = "Oyster Abundance: With and Without Restoration")  
+
+# Assign 5 colors for the 5 sites
+cols <- c("brown","orange", "black", "blue", "purple") 
+
+# Plot No Restoration (Dashed)
+for(s in 1:5){
+    points(log_site_totals1[s,], col=cols[s], type="l", lwd=2, lty=2)
+}
+
+# Plot With Restoration (Solid)
+for(s in 1:5) {
+    points(log_site_totald[s, ], col=cols[s], type="l", lwd=2, lty=1)
+}
+
+axis(1, at=seq(1,nYears+1), labels=seq(0,nYears))   
+
+# Plot empirical estimates
+points(x = rep(4, length(initabundpooled)), 
+       y = log10(initabundpooled + 0.1), 
+       col = "black",   
+       bg = "white",    
+       pch = 22,        
+       cex = 1.2)
+
+# Update legend
+legend_labels <- c("Laurel Hollow", "Oyster Bay Cove", "West Bay", "CovePoint", "Cold Spring Harbor", "Dashed: No Restoration", "Empirical")
+legend_cols <- c(cols, "black", "black")
+legend_ltys <- c(1, 1, 1, 1, 1, 2, NA)
+legend_pchs <- c(NA, NA, NA, NA, NA, NA, 22)
+legend_bg <- c(NA, NA, NA, NA, NA, NA, "white")
+
+legend(x = 8, y = 6, 
+       legend = legend_labels, 
+       col = legend_cols, 
+       pt.bg = legend_bg,
+       lty = legend_ltys, 
+       pch = legend_pchs,
+       lwd = 2, 
+       ncol = 1, 
+       bty = "n")
