@@ -74,7 +74,6 @@ fc2t
 
 
 InitAbund <- c(238, 3333,	22377, 4047, 21299, 60064, 0, 0, 0 ) # initial empirical abundance from 2025 LH and then OBC
-#InitAbund2 <- c(0, 0, 0, 0, 0, 0, 0, 0, 0) #supposing 0 oysters in 2022
 InitAbund2 <- c(1, 1, 1, 1, 1, 1, 1, 1, 1) #supposing 0 oysters in 2022
 
 #oysters deployed
@@ -225,7 +224,7 @@ site_totals_matrixd <- rbind(site1_totald, site2_totald, site3_totald)
 log_site_totald <- log(site_totals_matrixd + 0.1)
 
 
-plot(1,1,pch="",ylim=c(0,max(log_site_totals1)),xlim=c(0,nYears+1),
+plot(1,1,pch="",ylim=c(0, max(log_site_totals1)),xlim=c(0,nYears+1),
      xlab="Years", ylab="Log Abundance", xaxt="n", 
      main = "Oyster Abundance: With and Without Restoration")  # set up blank plot
 

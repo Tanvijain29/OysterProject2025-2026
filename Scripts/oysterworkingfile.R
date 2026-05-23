@@ -2,9 +2,9 @@ options("install.lock"=FALSE)
 
 #OBCTotalarea = 40,468.6 m²/10 acres, OBC subpplot = 0.5 acre/ 2023.43m²
 #LHTotalArea = 80,792.689 m²/20acres, LH subplot = 0.5 acre/ 2023.43m²
-#quadrat area is 0.5m²
-#OBC area sampled = 19 * 0.5 = 9.5m²
-#LH area sampled = 17 * 0.5= 8.5m²
+#quadrat area is 0.25m²
+#OBC area sampled = 19 * 0.25 = 4.75m²
+#LH area sampled = 17 * 0.25= 4.25m²
 #very rough estimate but western bay area with sand and gravel substrate is about 211 acres 
 
 Transition <- matrix(  
