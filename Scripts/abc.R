@@ -7,7 +7,8 @@ library(readr)
 
 nYears <- 10
 InitAbund <- c(1, 1655, 54448, 1, 1, 1770, 1, 1, 1, 1, 1, 1, 1, 1, 1)
-K_sites_50 <- c(4046860, 2023430, 42739220, 10837171, 65402346)
+#K_sites_50 <- c(4046860, 2023430, 42739220, 10837171, 65402346)
+K_sites_100 <- c(8093710, 4046860, 85388700, 21650680, 130718100)
 
 T_block <- matrix(c(
   0.0012,       0,      0,
@@ -26,11 +27,11 @@ Base_Fecundity  <- kronecker(diag(5), F_block)
 
 
 connect_block <- matrix(c(
-  0.622, 0.006, 0.002, 0.0, 0.0, 
-  0.000, 0.226, 0.000, 0.0, 0.0, 
-  0.000, 0.098, 0.220, 0.0, 0.0, 
-  0.002, 0.024, 0.030, 0.0, 0.0, 
-  0.032, 0.008, 0.004, 0.0, 0.0  
+  0.333, 0.003, 0.000, 0.0, 0.0, # to LH
+  0.000, 0.003, 0.001, 0.0, 0.0, # to OBC
+  0.001, 0.221, 0.190, 0.0, 0.0, # to IB
+  0.008, 0.090, 0.012, 0.0, 0.0, # to Cove Point
+  0.081, 0.014, 0.005, 0.0, 0.0 # to CSH 
 ), nrow=5, byrow=TRUE)
 
 juveniles_only <- matrix(0, nrow = 3, ncol = 3)
@@ -53,7 +54,7 @@ run_projection <- function(initial_population, trans_mat, fec_mat, dump_mat, yea
     current_N <- proj_mat[, t - 1] + dump_mat[, t - 1]
     
     Site_Totals <- colSums(matrix(current_N, nrow = 3))
-    Density_Scalar <- pmax(0.1, (K_sites_50 - Site_Totals) / K_sites_50)
+    Density_Scalar <- pmax(0.1, (K_sites_100 - Site_Totals) / K_sites_100)
     
     larvae <- fec_mat %*% current_N
     settlers <- (connectivity %*% larvae) * 0.2

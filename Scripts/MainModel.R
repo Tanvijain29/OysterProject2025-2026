@@ -58,11 +58,11 @@ nYears <- 10
 Transition<- Transition * 0.82
 
 #Daily Larval Mortality for 21 day period from ABC model
-dlm <- 0.30
+dlm <- 0.327  #old value .30
 surviving_larva <-(1-dlm)^21
 
 #Fecundity scalar from ABC model
-Fecundity <- Fecundity * 0.98
+Fecundity <- Fecundity * 0.97 #old value 0.98
 Fecundity_after_larval_mort <- Fecundity  * surviving_larva
 
 #post-settlement survival is 20%
