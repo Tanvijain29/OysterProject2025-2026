@@ -69,3 +69,5 @@ k_values_50 = total_areas * 50
 print(total_areas.round(2))
 
 print(k_values_50.round(0).astype(int))
+
+

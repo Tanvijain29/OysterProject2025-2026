@@ -136,7 +136,6 @@ allYearsdumplog<- log10(allYearsdump + 0.1) #log 10 of the population. 0.1 added
 site_names <- c("Laurel Hollow", "Oyster Bay Cove", "Inner Bay", "Cove Point", "Cold Spring Harbor")
 no_restoration <- rowsum(allYears, group = rep(site_names, each = 3))
 with_restoration <- rowsum(allYearsdump, group = rep(site_names, each = 3))
-with_llr<- rowsum(allYearsdumpllr, group = rep(site_names, each = 3))
 
 no_restoration_df <- as.data.frame(no_restoration) %>%
   setNames(2022:(2022 + ncol(allYears) - 1)) %>%
@@ -150,29 +149,24 @@ with_restoration_df <- as.data.frame(with_restoration) %>%
   pivot_longer(-Site, names_to = "Year", values_to = "Abundance") %>%
   mutate(Year = as.numeric(Year), Scenario = "With Restoration")
 
-with_llr_df <- as.data.frame(with_llr) %>%
-  setNames(2022:(2022 + ncol(allYearsdumpllr) - 1)) %>%
-  rownames_to_column("Site") %>%
-  pivot_longer(-Site, names_to = "Year", values_to = "Abundance") %>%
-  mutate(Year = as.numeric(Year), Scenario = "With Higher Larval Retention")
 
 
-plot_data <- rbind(no_restoration_df, with_restoration_df, with_llr_df)
+plot_data <- rbind(no_restoration_df, with_restoration_df)
 plot_data$Site <- factor(plot_data$Site, levels = site_names)
 
-ggplot(plot_data, aes(x = Year, y = Abundance , color = Scenario, linetype = Scenario, shape = Scenario)) +
+ggplot(plot_data, aes(x = Year, y = Abundance + 0.01 , color = Scenario, linetype = Scenario, shape = Scenario)) +
   geom_line(linewidth = 0.8) +
   geom_point(data = subset(plot_data, Year %in% c(2022, 2024, 2026, 2028, 2030, 2032)), size = 2.0)+
   facet_wrap(~ Site, scales = "fixed", ncol = 3) +
-  scale_color_manual(values = c("With Restoration" = "black", "Without Restoration" = "black","With Higher Larval Retention" = "black" )) +
-  scale_linetype_manual(values = c("With Restoration" = "solid", "Without Restoration" = "dashed", "With Higher Larval Retention" = "solid")) +
-  scale_shape_manual(values = c("With Restoration" = 15, "Without Restoration" = 0, "With Higher Larval Retention" = 17)) +
+  scale_color_manual(values = c("With Restoration" = "black", "Without Restoration" = "black")) +
+  scale_linetype_manual(values = c("With Restoration" = "solid", "Without Restoration" = "dashed")) +
+  scale_shape_manual(values = c("With Restoration" = 15, "Without Restoration" = 0)) +
   
   scale_x_continuous(breaks = scales::pretty_breaks(n = 4)) +
-#  scale_y_log10(
-#    breaks = c(1, 10, 100, 1000, 10000, 100000, 1000000),
-#    labels = c("1", "10", "100", "1K", "10K", "100K", "1M")) +
-  ylim(0, 2000000)+
+  scale_y_log10(
+    breaks = c(1, 10, 100, 1000, 10000, 100000, 1000000),
+    labels = c("1", "10", "100", "1K", "10K", "100K", "1M")) +
+  # ylim(0, 2000000)+
   labs(
     title = paste0("Eastern Oyster ", nYears, "-Year Population Projection "),
     x = "Year",
