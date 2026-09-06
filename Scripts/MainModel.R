@@ -30,14 +30,20 @@ Fecundity  <- kronecker(diag(5), F_block)
 
 #connectivity matrix derived from Wallace MIKE model
 connect_block <- matrix(c(
-#from LH    OBC   Inner   0 COP CSH
-    0.622, 0.006, 0.002, 0.0, 0.0, # to LH
-    0.000, 0.226, 0.000, 0.0, 0.0, # to OBC
-    0.000, 0.098, 0.22, 0.0, 0.0, # to IB
-    0.002, 0.024, 0.030, 0.0, 0.0, # to Cove Point
-    0.032, 0.008, 0.004, 0.0, 0.0  # to CSH
+#from LH    OBC   Inner   COP CSH
+    0.333, 0.003, 0.000, 0.0, 0.0, # to LH
+    0.000, 0.003, 0.001, 0.0, 0.0, # to OBC
+    0.001, 0.221, 0.190, 0.0, 0.0, # to IB
+    0.008, 0.090, 0.012, 0.0, 0.0, # to Cove Point
+    0.081, 0.014, 0.005, 0.0, 0.0  # to CSH
 ), nrow=5, byrow=TRUE)
 
+
+#    0.622, 0.006, 0.002, 0.0, 0.0, # to LH
+#0.000, 0.226, 0.000, 0.0, 0.0, # to OBC
+#0.000, 0.098, 0.22, 0.0, 0.0, # to IB
+#0.002, 0.024, 0.030, 0.0, 0.0, # to Cove Point
+#0.032, 0.008, 0.004, 0.0, 0.0  # to CSH
 
 #create a small 3x3 matrix with 1 in the 1x1 position. When multiplied by the con_block, only juveniles can move.
 juveniles_only <-matrix(0, nrow = 3, ncol = 3)
@@ -81,8 +87,8 @@ dumping_matrix[1:9, 2] <-    c(247198  * 0.10, 0, 0, 6714155 * 0.10, 0, 329707, 
 dumping_matrix[1:9, 3] <-    c(22500   * 0.10, 0, 0, 5881028 * 0.10, 0, 129533, 0, 0, 0)
 dumping_matrix[1:9, 4:10] <- c(3000000 * 0.10, 0, 0, 3000000 * 0.10, 0, 75000 , 0, 0, 0)
 
-#Maximum carrying capacity for each site assuming reef capacity at 50 oysters/m^2
-K_sites_50 <- c(4046860, 2023430, 42739220, 10837171, 65402346)
+#Maximum carrying capacity for each site assuming reef capacity at 100 oysters/m^2
+#K_sites_50 <- c(4046860, 2023430, 42739220, 10837171, 65402346)
 K_sites_100 <- c(8093710, 4046860, 85388700, 21650680, 130718100)
 #LH 20 acres, OBC 10 acres, Inner Bay 211 acres, CP acres 53.5 acres , CSH acres 323.2 acres
 
@@ -106,7 +112,7 @@ run_projection <- function(initial_population, dump_mat = NULL, years = nYears) 
     
     #Calculate site totals and the density scalar
     Site_Totals <- colSums(matrix(current_N, nrow = 3))
-    Density_Scalar <- pmax(0.1, (K_sites_50 - Site_Totals) / K_sites_50)
+    Density_Scalar <- pmax(0.1, (K_sites_100 - Site_Totals) / K_sites_100)
     
     #Recruitment
     larvae <- Fecundity_after_larval_mort %*% current_N
